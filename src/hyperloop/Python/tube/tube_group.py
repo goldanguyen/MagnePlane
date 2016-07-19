@@ -114,6 +114,7 @@ class TubeGroup(Group):
 
         self.add('Temp',TubeTemp(), promotes=['length_tube',
                                               'tube_area', #need to change radius_outer_tube
+                                              'tube_thickness',
                                               'nozzle_air_W',
                                               'nozzle_air_Tt',
                                               'nozzle_air_Cp',
@@ -163,6 +164,7 @@ if __name__ == "__main__":
 
     params = (('tube_area', 40.0, {'units': 'm**2'}),
               ('tube_length', 482803.0, {'units': 'm'}),
+              ('tube_thickness', .05, {'units': 'm'}),
               ('nozzle_air_W',1.08, {'units': 'kg/s'}),
               ('nozzle_air_Tt',1710.0, {'units': 'K'}),
               ('nozzle_air_Cp',0.24, {'units': 'kJ/kg/degK'}),
@@ -187,6 +189,7 @@ if __name__ == "__main__":
     top.root.connect('des_vars.tube_area', 'TubeGroup.tube_area')
     top.root.connect('des_vars.tube_length', 'TubeGroup.tube_length')  #to Vacuum
     top.root.connect('des_vars.tube_length','TubeGroup.length_tube')  #to TubeTemp
+    top.root.connect('des_vars.tube_thickness','TubeGroup.tube_thickness')
     top.root.connect('des_vars.nozzle_air_W', 'TubeGroup.nozzle_air_W')
     top.root.connect('des_vars.nozzle_air_Tt', 'TubeGroup.nozzle_air_Tt')
     top.root.connect('des_vars.nozzle_air_Cp', 'TubeGroup.nozzle_air_Cp')

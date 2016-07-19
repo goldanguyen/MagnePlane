@@ -84,8 +84,6 @@ class TubeGroup(Group):
         Thrust produced by pod compressed air. Default value 21473.92 N. Will pull value from flow_path.py
     ram_drag : float
         Drag produced by inlet ram pressure. Default value is 7237.6
-    prop_power : float
-        Power required to accelerate pod to 1G once (W)
     num_thrust : float
         Number of propulsion thrusts required for trip (unitless)
     time_thrust : float
@@ -103,8 +101,8 @@ class TubeGroup(Group):
         super(TubeGroup, self).__init__()
 
         #Adding in components to Tube Group
-        self.add('Vacuum', Vacuum(), promotes=['tube_length',
-                                               'tube_area',
+        self.add('Vacuum', Vacuum(), promotes=['tube_area',
+                                               'tube_length',
                                                'pressure_initial',
                                                'pressure_final',
                                                'pwr',
@@ -114,11 +112,11 @@ class TubeGroup(Group):
                                                'gamma',
                                                'pump_weight'])
         self.add('Temp',TubeTemp(), promotes=['length_tube',
-                                              'radius_outer_tube',
+                                              'radius_outer_tube',#need to change radius_outer_tube
                                               'nozzle_air_W',
                                               'nozzle_air_Tt',
                                               'nozzle_air_Cp',
-                                              'num_pods'
+                                              'num_pods',
                                               'temp_boundary'])
         self.add('Struct', TubeAndPylon(), promotes=['p_tunnel',
                                                      'm_pod',
@@ -131,13 +129,11 @@ class TubeGroup(Group):
                                                               'Cd',
                                                               'S',
                                                               'D_mag',
-                                                              'Fg_dP',
-                                                              'ram_drag',
-                                                              'nozzle_thrust'])
+                                                              'nozzle_thrust',
+                                                              'ram_drag'])
         self.add('TubePower', TubePower(), promotes=['num_thrust',
                                                      'elec_price',
-                                                     'time_thrust',
-                                                     'prop_power'])
+                                                     'time_thrust'])
 
         #Connects vacuum outputs to downstream components
         self.connect('Vacuum.weight_tot', 'Struct.vac_weight')
@@ -159,28 +155,55 @@ if __name__ == "__main__":
     top.root = Group()
     top.root.add('TubeGroup', TubeGroup())
 
-    params = (('length_tube', 482803.0),
-              ('m_pod', 3100.0),
-              ('tube_area', 40.0),
-              ('h', 10.0),
-              ('Cd', 0.2),
-              ('S', 1.4),
-              ('mag_drag', 150.0),
-              ('Fg', 3500.0),
-              ('F_ram',7237.6))
+    params = (('tube_area', 40.0, {'units': 'm**2'}),
+              ('tube_length', 482803.0, {'units': 'm'}),
+              ('nozzle_air_W',34.0, {'units': 'kg/s'}),
+              ('nozzle_air_Tt',34.0, {'units': 'K'}),
+              ('nozzle_air_Cp',34.0, {'units': 'kJ/kg/degK'}),
+              ('num_pods',34, {'units': 'unitless'}),
+              ('p_tunnel',100.0, {'units': 'Pa'}),
+              ('m_pod', 3100.0, {'units': 'kg'}),
+              ('h', 10.0, {'units': 'm'}),
+              ('p_tube',100.0, {'units': 'Pa'}),
+              ('vf',335.0, {'units': 'm/s'}),
+              ('v0',324.0, {'units': 'm/s'}),
+              ('Cd', 0.2, {'units': 'm'}),
+              ('S', 1.4, {'units': 'm**2'}),
+              ('D_mag', 150.0, {'units': 'N'}),
+              ('nozzle_thrust', 3500.0, {'units': 'N'}),
+              ('ram_drag',7237.6, {'units': 'N'}),
+              ('num_thrust',5.0, {'units': 'unitless'}),
+              ('elec_price',0.13, {'units': 'USD/kW/h'}),
+              ('time_thrust',1.5, {'units': 's'}),
+              )
 
     top.root.add('des_vars',IndepVarComp(params))
-    top.root.connect('des_vars.length_tube','TubeGroup.length_tube')
+    top.root.connect('des_vars.tube_area', 'TubeGroup.tube_area')
+    top.root.connect('des_vars.tube_length', 'TubeGroup.tube_length')  #to Vacuum
+    top.root.connect('des_vars.tube_length','TubeGroup.length_tube')  #to TubeTemp
+    top.root.connect('des_vars.nozzle_air_W', 'TubeGroup.nozzle_air_W')
+    top.root.connect('des_vars.nozzle_air_Tt', 'TubeGroup.nozzle_air_Tt')
+    top.root.connect('des_vars.nozzle_air_Cp', 'TubeGroup.nozzle_air_Cp')
+    top.root.connect('des_vars.num_pods', 'TubeGroup.num_pods')
+    top.root.connect('des_vars.p_tunnel', 'TubeGroup.p_tunnel')
     top.root.connect('des_vars.m_pod','TubeGroup.m_pod')
-    top.root.connect('des_vars.tube_area','TubeGroup.tube_area')
     top.root.connect('des_vars.h','TubeGroup.h')
+    top.root.connect('des_vars.p_tube', 'TubeGroup.p_tube')
+    top.root.connect('des_vars.vf', 'TubeGroup.vf')
+    top.root.connect('des_vars.v0', 'TubeGroup.v0')
     top.root.connect('des_vars.Cd','TubeGroup.Cd')
     top.root.connect('des_vars.S','TubeGroup.S')
-    top.root.connect('des_vars.mag_drag','TubeGroup.D_mag')
-    top.root.connect('des_vars.Fg','TubeGroup.nozzle_thrust')
-    top.root.connect('des_vars.F_ram','TubeGroup.ram_drag')
+    top.root.connect('des_vars.D_mag','TubeGroup.D_mag')
+    top.root.connect('des_vars.nozzle_thrust','TubeGroup.nozzle_thrust')
+    top.root.connect('des_vars.ram_drag','TubeGroup.ram_drag')
+    top.root.connect('des_vars.num_thrust', 'TubeGroup.num_thrust')
+    top.root.connect('des_vars.elec_price', 'TubeGroup.elec_price')
+    top.root.connect('des_vars.time_thrust', 'TubeGroup.time_thrust')
 
     top.setup()
+    # from openmdao.api import view_tree
+    # view_tree(top)
+    # exit()
     top.root.list_connections()
     top.run()
 

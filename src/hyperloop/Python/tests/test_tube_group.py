@@ -22,6 +22,7 @@ class TestTube(object):
 
         prob['comp.tube_area'] = 40.0
         prob['comp.tube_length'] = 482803.0
+        prob['comp.tube_thickness'] = .05
         prob['comp.nozzle_air_W'] = 34.0
         prob['comp.nozzle_air_Tt'] = 34.0
         prob['comp.nozzle_air_Cp'] = 34.0

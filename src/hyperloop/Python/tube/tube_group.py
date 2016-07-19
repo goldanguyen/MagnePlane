@@ -1,7 +1,7 @@
 from openmdao.api import Group, Problem, IndepVarComp, ScipyGMRES
 
 from hyperloop.Python.tube.tube_vacuum import Vacuum
-from hyperloop.Python.tube.tube_wall_temp import TubeTemp
+from hyperloop.Python.tube.tube_wall_temp import TubeTemp, TempBalance
 from hyperloop.Python.tube.tube_and_pylon import TubeAndPylon
 from hyperloop.Python.tube.propulsion_mechanics import PropulsionMechanics
 from hyperloop.Python.tube.tube_power import TubePower
@@ -40,8 +40,8 @@ class TubeGroup(Group):
         Operational percentage of the pump per day. Default value is 0.8.
     pump_weight : float
         Weight of one pump. Default value is 715.0.
-    radius_outer_tube : float
-        tube outer radius (m)
+    tube_thickness : float
+        Thickness of tube in m. Default value is .05
     length_tube : float
         Length of the entire Hyperloop tube (m)
     num_pods : int
@@ -111,13 +111,18 @@ class TubeGroup(Group):
                                                'time_down',
                                                'gamma',
                                                'pump_weight'])
+
         self.add('Temp',TubeTemp(), promotes=['length_tube',
-                                              'radius_outer_tube',#need to change radius_outer_tube
+                                              'tube_area', #need to change radius_outer_tube
                                               'nozzle_air_W',
                                               'nozzle_air_Tt',
                                               'nozzle_air_Cp',
                                               'num_pods',
-                                              'temp_boundary'])
+                                              'temp_boundary'
+                                              ])
+
+        #self.add('TempBalance',TempBalance(), promotes=['temp_boundary'])
+
         self.add('Struct', TubeAndPylon(), promotes=['p_tunnel',
                                                      'm_pod',
                                                      'tube_area',
@@ -149,6 +154,7 @@ class TubeGroup(Group):
 
         self.ln_solver = ScipyGMRES()
 
+
 if __name__ == "__main__":
 
     top = Problem()
@@ -157,9 +163,9 @@ if __name__ == "__main__":
 
     params = (('tube_area', 40.0, {'units': 'm**2'}),
               ('tube_length', 482803.0, {'units': 'm'}),
-              ('nozzle_air_W',34.0, {'units': 'kg/s'}),
-              ('nozzle_air_Tt',34.0, {'units': 'K'}),
-              ('nozzle_air_Cp',34.0, {'units': 'kJ/kg/degK'}),
+              ('nozzle_air_W',1.08, {'units': 'kg/s'}),
+              ('nozzle_air_Tt',1710.0, {'units': 'K'}),
+              ('nozzle_air_Cp',0.24, {'units': 'kJ/kg/degK'}),
               ('num_pods',34, {'units': 'unitless'}),
               ('p_tunnel',100.0, {'units': 'Pa'}),
               ('m_pod', 3100.0, {'units': 'kg'}),

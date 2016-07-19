@@ -122,6 +122,7 @@ class TempBalance(Component):
     .. [2] 3rd Ed. of Introduction to Heat Transfer by Incropera and DeWitt,
     equations (9.33) and (9.34) on page 465
     """
+    
     def __init__(self):
         super(TempBalance, self).__init__()
         self.add_param('ss_temp_residual', val=0.)
@@ -397,7 +398,6 @@ class TubeWallTemp(Component):
         u['ss_temp_residual'] = (u['q_total_out'] - u['q_total_in']) / 1e6
         # print("u['ss_temp_residual'] ", u['ss_temp_residual'])
         # print("temp boundary", p['temp_boundary'])
-
 
 class TubeTemp(Group):
     """An Assembly that computes Steady State temp"""

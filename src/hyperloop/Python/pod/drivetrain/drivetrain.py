@@ -27,6 +27,7 @@ class Drivetrain(Group):
     Params
     ------
     design_torque : float
+        design torque at max rpm (N*m)
     design_power : float
         desired design value for motor power (W)
     motor_max_current : float
@@ -43,7 +44,6 @@ class Drivetrain(Group):
         total mission time (h)
     battery_cross_section_area : float
         cross_sectional area of battery used to compute length (cm^2)
-
 
     Outputs
     -------
@@ -140,3 +140,13 @@ if __name__ == '__main__':
 
     prob.root.list_connections()
     prob.run()
+
+    print(prob['battery_mass'])
+    print(prob['battery_volume'])
+    print(prob['battery_cost'])
+    print(prob['battery_length'])
+    print(prob['motor_volume'])
+    print(prob['motor_diameter'])
+    print(prob['motor_mass'])
+    print(prob['motor_length'])
+    print(prob['motor_power_input'])

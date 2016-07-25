@@ -35,7 +35,7 @@ class TempBalance(Component):
         tube thickness (m)
     length_tube : float
         Length of the entire Hyperloop tube (m)
-    num_pods : int
+    num_pods : float
         Number of Pods in the Tube at a given time
     temp_boundary : float
         Average Temperature of the tube wall (K). This state variable is varied
@@ -43,8 +43,6 @@ class TempBalance(Component):
         Average Temperature of the outside air (K)
     nozzle_air_W : float
         mass flow rate of the air exiting the pod nozzle (kg/s)
-    nozzle_air_Cp : float
-        specific heat of the air exiting the pod nozzle
     nozzle_air_T : float
         temp of the air exiting the pod nozzle (K)
     solar_insolation : float
@@ -170,7 +168,7 @@ class TubeWallTemp(Component):
             units='m',
             desc='Length of entire Hyperloop')  #300 miles, 1584000ft
         self.add_param('num_pods',
-                       34,
+                       34.,
                        desc='Number of Pods in the Tube at a given time')  #
         self.add_param('temp_boundary',
                        322.0,
@@ -187,7 +185,8 @@ class TubeWallTemp(Component):
                         #units = 'kg/s',
                         desc='mass flow rate of the air exiting the pod nozzle')
         self.add_param('nozzle_air_Cp',
-                        34.,
+                        1.009,
+                        units='kJ/kg/K',
                         desc='specific heat of air exiting the pod nozzle')
         self.add_param('nozzle_air_Tt',
                         34.,
@@ -407,7 +406,7 @@ class TubeTemp(Group):
 
         self.add('tm', TubeWallTemp(), promotes=[
             'length_tube','tube_area','tube_thickness','num_pods',
-            'nozzle_air_W','nozzle_air_Tt','nozzle_air_Cp'])
+            'nozzle_air_W','nozzle_air_Tt'])
 
         self.add('tmp_balance', TempBalance(), promotes=['temp_boundary'])
 
@@ -461,18 +460,14 @@ if __name__ == "__main__":
     #tube inputs
     prob.root.add('vars', IndepVarComp(dvars))
 
-    #prob.root.connect('des_vars.P', 'tt.nozzle_air_P')
     prob.root.connect('des_vars.T', 'tt.nozzle_air_Tt')
     prob.root.connect('des_vars.W', 'tt.nozzle_air_W')
-    prob.root.connect('des_vars.Cp', 'tt.nozzle_air_Cp')
 
     prob.root.connect('vars.tube_area', 'tt.tube_area')
     prob.root.connect('vars.tube_thickness', 'tt.tube_thickness')
     prob.root.connect('vars.length_tube', 'tt.length_tube')
     prob.root.connect('vars.num_pods', 'tt.num_pods')
-    #prob.root.connect('vars.temp_boundary','tmp_balance.temp_boundary')
-    prob.root.connect('vars.temp_outside_ambient',
-                      'tt.tm.temp_outside_ambient')
+    prob.root.connect('vars.temp_outside_ambient','tt.tm.temp_outside_ambient')
 
     prob.setup()
     prob.root.list_connections()

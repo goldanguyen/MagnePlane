@@ -34,42 +34,39 @@ class FlowPath(Group):
     """
     Params
     ------
-    ram_recovery : float
-        Perfcentage of ram pressure recovered (1-ram_recovery) is lost
-    inlet_MN : float
-        Mach Number at the front face of the inlet
-    comp.PRdes : float
-        Pressure Ratio used to "design" and size the compressor
-    comp.effDes : float
-        Target Efficiency of the "design" compressor
-    comp.MN_target : float
-        Mach Number at the front face of the compressor
-    duct.dPqP : float
-        Pressure loss across a duct
-    duct.MN_target : float
-        Mach Number at the front face of the duct
-    nozzle.Cfg : float
-        Gross Thrust Performance Coefficient
-    nozzle.dPqP : float
-        Pressure loss in the nozzle
-    shaft.Nmech : float
-        Mechanical RPM of the shaft (connected to compressor and motor)
+    fl_start.P : float
+        Tube total pressure
+    fl_start.T : float
+        Tube total temperature
+    fl_start.W : float
+        Tube total mass flow
+    fl_start.MN_target : float
+        Vehicle mach number
+    comp.map.PRdes : float
+        Pressure ratio of compressor
+    nozzle.Ps_exhaust : float
+        Exit pressure of nozzle
 
     Returns
     -------
-    Freestream Conditions : float
-        Required as boundary conditions for CFD
-    Fan Face Conditions : float
-        Required as boundary conditions for CFD
-    Nozzle Plenum Conditions : float
-        Required as boundary conditions for CFD
-    Nozzle Exit Conditions : float
-        Required as boundary conditions for CFD.
-        Also includes Thrust, Inlet Ram Drag, and Pod Gross Thrust
-    comp pwr out : float
-        Power required by the compressor
-    comp trq out : float
-        Torque required by compressor motor
+    comp.torque : float
+        Total torque required by motor
+    comp.power : float
+        Total power required by motor
+    comp.Fl_O:stat:area : float
+        Area of the duct
+    nozzle.Fg : float
+        Nozzle thrust
+    inlet.F_ram : float
+        Ram drag
+    nozzle.Fl_O:tot:T : float
+        Total temperature at nozzle exit
+    nozzle.Fl_O:stat:W : float
+        Total mass flow rate at nozzle exit
+    FlowPath.inlet.Fl_O:tot:h : float
+        Inlet enthalpy of compressor
+    FlowPath.comp.Fl_O:tot:h : float
+        Exit enthalpy of compressor
 
     Notes
     -----
@@ -79,8 +76,18 @@ class FlowPath(Group):
     def __init__(self):
         super(FlowPath, self).__init__()
 
-        # initiate components
-        #self.add('fc', FlightConditions())
+        des_vars = (('ram_recovery', 0.99),
+                    ('effDes', 0.9),
+                    ('duct_MN', 0.65),
+                    ('duct_dPqP', 0.),
+                    ('nozzle_Cfg', 1.0),
+                    ('nozzle_dPqP', 0.),
+                    ('shaft_Nmech', 10000.),
+                    ('inlet_MN', 0.6),
+                    ('comp_MN', 0.65))
+
+        self.add('input_vars',IndepVarComp(des_vars))
+
         self.add('fl_start', FlowStart(thermo_data=janaf, elements=AIR_MIX))
         # internal flow
         self.add('inlet', Inlet(thermo_data=janaf, elements=AIR_MIX))
@@ -94,6 +101,16 @@ class FlowPath(Group):
         connect_flow(self, 'inlet.Fl_O', 'comp.Fl_I')
         connect_flow(self, 'comp.Fl_O', 'duct.Fl_I')
         connect_flow(self, 'duct.Fl_O', 'nozzle.Fl_I')
+
+        self.connect('input_vars.ram_recovery', 'inlet.ram_recovery')
+        self.connect('input_vars.effDes', 'comp.map.effDes')
+        self.connect('input_vars.duct_MN', 'duct.MN_target')
+        self.connect('input_vars.duct_dPqP', 'duct.dPqP')
+        self.connect('input_vars.nozzle_Cfg', 'nozzle.Cfg')
+        self.connect('input_vars.nozzle_dPqP', 'nozzle.dPqP')
+        self.connect('input_vars.shaft_Nmech', 'shaft.Nmech')
+        self.connect('input_vars.inlet_MN', 'inlet.MN_target')
+        self.connect('input_vars.comp_MN', 'comp.MN_target')
 
         self.connect('comp.trq', 'shaft.trq_0')
         self.connect('shaft.Nmech', 'comp.Nmech')
@@ -110,22 +127,20 @@ if __name__ == "__main__":
     recorder.options['record_metadata'] = True
     prob.driver.add_recorder(recorder)
 
-    params = (('vehicleMach', 0.8),
-              ('inlet_MN', 0.65),
-              ('P', 0.1885057735, {'units': 'psi'}),
-              ('T', 591.0961831, {'units': 'degR'}),
-              ('W', 4.53592, {'units': 'kg/s'}),
-              ('PsE', 0.59344451, {'units': 'psi'}),
-              ('cmpMach', 0.65), )
+    params = (('P', .1879, {'units': 'psi'}),
+              ('T', 605.06, {'units': 'degR'}),
+              ('W', 7.2673, {'units': 'kg/s'}),
+              ('vehicleMach', 0.8),
+              ('PRdes', 12.5),
+              ('PsE', 0.05588, {'units': 'psi'}))
 
     prob.root.add('des_vars', IndepVarComp(params))
+
     prob.root.connect('des_vars.P', 'FlowPath.fl_start.P')
     prob.root.connect('des_vars.T', 'FlowPath.fl_start.T')
     prob.root.connect('des_vars.W', 'FlowPath.fl_start.W')
-
     prob.root.connect('des_vars.vehicleMach', 'FlowPath.fl_start.MN_target')
-    prob.root.connect('des_vars.inlet_MN', 'FlowPath.inlet.MN_target')
-
+    prob.root.connect('des_vars.PRdes', 'FlowPath.comp.map.PRdes')
     prob.root.connect('des_vars.PsE', 'FlowPath.nozzle.Ps_exhaust')
 
     # Make sure balance runs before FlowPath
@@ -133,36 +148,10 @@ if __name__ == "__main__":
     prob.setup(check=True)
     prob.root.list_connections()
 
-    # Flight Conditions
-
-    # Inlet Conditions
-    prob['FlowPath.inlet.ram_recovery'] = 0.99
-    if prob['des_vars.inlet_MN'] > prob['des_vars.vehicleMach']:
-        prob['des_vars.inlet_MN'] = prob['des_vars.vehicleMach']
-
-    # Compressor Conditions
-    prob['FlowPath.comp.map.PRdes'] = 6.0
-    prob['FlowPath.comp.map.effDes'] = 0.9
-    prob['FlowPath.comp.MN_target'] = 0.65
-
-    # Duct
-    prob['FlowPath.duct.MN_target'] = 0.65
-    prob['FlowPath.duct.dPqP'] = 0.
-
-    # Nozzle Conditions
-    prob['FlowPath.nozzle.Cfg'] = 1.0
-    prob['FlowPath.nozzle.dPqP'] = 0.
-
-    # Shaft
-    prob['FlowPath.shaft.Nmech'] = 10000.
-
     #prob.print_all_convergence()
     import time
     t = time.time()
     prob.run()
-    #print (time.time() - t)
-    #inputs = ['balance.Pt', 'balance.Tt', 'balance.W', 'balance.BPR']
-    #prob.check_total_derivatives()
 
     batteries = (-prob['FlowPath.comp.power'] * HPtoKW * (tubeLen / (
         prob['FlowPath.fl_start.Fl_O:stat:V'] * 0.3048) / 3600.0)) / teslaPack

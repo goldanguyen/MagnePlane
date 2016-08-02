@@ -136,7 +136,7 @@ class Vacuum(Component):
 
         # unknowns['vol'] = vol
         # unknowns['volft'] = volft
-        unknowns['energy_tot'] = energy_tot
+        unknowns['energy_tot'] = energy_tot*.01
         unknowns['number_pumps'] = n
 
         unknowns['pwr_tot'] = params['pwr'] * n
@@ -161,3 +161,4 @@ if __name__ == '__main__':
           (p['comp.pwr_tot']))  # Print total power
     print('Total energy per day (kJ): %f' %
           (p['comp.energy_tot']))  # Print total energy consumed per day
+    

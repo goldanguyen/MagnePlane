@@ -5,6 +5,8 @@ from hyperloop.Python.tube.tube_wall_temp import TubeTemp, TempBalance
 from hyperloop.Python.tube.tube_and_pylon import TubeAndPylon
 from hyperloop.Python.tube.propulsion_mechanics import PropulsionMechanics
 from hyperloop.Python.tube.tube_power import TubePower
+from hyperloop.Python.tube.steady_state_vacuum import SteadyStateVacuum
+from hyperloop.Python.tube.submerged_tube import SubmergedTube
 
 class TubeGroup(Group):
     """
@@ -70,6 +72,8 @@ class TubeGroup(Group):
         Number of propulsion thrusts required for trip (unitless)
     time_thrust : float
         Time required to accelerate pod to 1G (s)
+    W : float
+        Leakage rate of tube in kg/s
 
     Returns
     -------
@@ -110,10 +114,14 @@ class TubeGroup(Group):
         self.add('TubePower', TubePower(), promotes=['num_thrust',
                                                      'time_thrust'])
 
+        self.add('SteadyStateVacuum', SteadyStateVacuum(), promotes = ['fl_start.W', 'comp.power', 'pod_period', 'L_pod'])
+
+        self.add('SubmergedTube', SubmergedTube(), promotes = ['depth'])
+
         # Connects tube group level variables to downstream components
-        self.connect('tube_area', ['Temp.tube_area', 'Struct.tube_area'])
+        self.connect('tube_area', ['Temp.tube_area', 'Struct.tube_area', 'SubmergedTube.A_tube', 'SteadyStateVacuum.A_tube'])
         self.connect('tube_length', 'Temp.length_tube')
-        self.connect('p_tunnel', ['PropMech.p_tube', 'Vacuum.pressure_final'])
+        self.connect('p_tunnel', ['PropMech.p_tube', 'Vacuum.pressure_final', 'SteadyStateVacuum.fl_start.P', 'SubmergedTube.p_tube'])
         self.connect('electricity_price', 'TubePower.elec_price')
         self.connect('tube_thickness', 'Struct.t')
         self.connect('m_pod', 'PropMech.m_pod')
@@ -124,8 +132,7 @@ class TubeGroup(Group):
         self.connect('Vacuum.energy_tot', 'TubePower.vac_energy_day')
 
         # Connects tube_wall_temp outputs to downstream components
-        self.connect('temp_boundary', 'PropMech.T_ambient')
-        self.connect('temp_boundary', 'TubePower.tube_temp')
+        self.connect('temp_boundary', ['TubePower.tube_temp', 'SteadyStateVacuum.fl_start.T','PropMech.T_ambient'])
 
         # Connects propulsion_mechanics outputs to downstream components
         self.connect('PropMech.pwr_req', 'TubePower.prop_power')
@@ -146,7 +153,7 @@ if __name__ == "__main__":
               ('pump_weight', 715.0, {'units' : 'kg'}),
               ('nozzle_air_W',1.08, {'units': 'kg/s'}),
               ('nozzle_air_Tt',1710.0, {'units': 'K'}),
-              ('num_pods',34, {'units': 'unitless'}),
+              ('num_pods',34., {'units': 'unitless'}),
               ('h', 10.0, {'units': 'm'}),
               ('vf',335.0, {'units': 'm/s'}),
               ('v0',324.0, {'units': 'm/s'}),
@@ -163,7 +170,10 @@ if __name__ == "__main__":
               ('electricity_price', .13, {'units': 'USD/kW/h'}),
               ('tube_thickness', .05, {'units': 'm'}),
               ('pod_mass', 3100., {'units': 'kg'}),
-              ('r_pylon', .1, {'units' : 'm'}))
+              ('r_pylon', .1, {'units' : 'm'}),
+              ('depth', 10.0, {'units' : 'm'}),
+              ('pod_period', 120.0, {'units' : 's'}),
+              ('L_pod', 22.0, {'units' : 'm'}))
 
     top.root.add('des_vars',IndepVarComp(des_vars))
     top.root.connect('des_vars.pressure_initial', 'TubeGroup.pressure_initial')
@@ -192,12 +202,17 @@ if __name__ == "__main__":
     top.root.connect('des_vars.speed', 'TubeGroup.speed')
     top.root.connect('des_vars.time_down', 'TubeGroup.time_down')
     top.root.connect('des_vars.r_pylon', 'TubeGroup.r_pylon')
+    top.root.connect('des_vars.depth', 'TubeGroup.depth')
+    top.root.connect('des_vars.pod_period', 'TubeGroup.pod_period')
+    top.root.connect('des_vars.L_pod', 'TubeGroup.L_pod')
 
     # from openmdao.api import view_tree
     # view_tree(top)
     # exit()
     top.setup()
-    top.root.list_connections()
+    #top.root.list_connections()
+    from openmdao.api import view_tree
+    view_tree(top)
     top.run()
 
     # print('\n')
@@ -216,3 +231,6 @@ if __name__ == "__main__":
     print('\n')
     print('Total Tube Power [kW]: %f' % top['TubeGroup.TubePower.tot_power'])
     print('Tube Temp [K]: %f' % top['TubeGroup.temp_boundary'])
+    print('steady state vacuum power: %f' % top['TubeGroup.comp.power'])
+    print('pwr_req %f' % top['TubeGroup.PropMech.pwr_req'])
+
